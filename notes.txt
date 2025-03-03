@@ -1,0 +1,15 @@
+CRUD app consists 4 operations create/write, read/get, update and delete items from an array 
+we can make a fully fronted, backend and realdatabase as well and can host our webapp so that we can access our webapp from browser by domain.com insteated of localhost.
+
+steps to follow for a fully functional crud app
+1. write backend (done)
+2. fronted (done)
+3. deployment
+4. authantication
+
+we are going to make it's fronted now so that we can feel like production grade app
+
+*conntect to fronted (React, HTML/CSS/JS)
+*deployment (Render, Vercel or Railway)
+*authentication(JWT, OAuth)
+
