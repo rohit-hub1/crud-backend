@@ -12,13 +12,16 @@ app.use(express.json()); // Enables JSON parsing
 const port = 3000;
 
 // ✅ Connect to MongoDB
+console.log("MongoDB URI:", process.env.MONGO_URI); // Debugging
+
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+
 
 
 // ✅ Define Tea Schema & Model
