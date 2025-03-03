@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const app = express();
 app.use(cors());
@@ -10,9 +13,13 @@ const port = 3000;
 
 // ✅ Connect to MongoDB
 mongoose
-  .connect("mongodb://localhost:27017/teaDB")
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+
 
 // ✅ Define Tea Schema & Model
 const teaSchema = new mongoose.Schema({
