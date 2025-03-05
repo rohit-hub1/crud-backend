@@ -8,7 +8,7 @@ dotenv.config();
 const app = express();
 app.use(
   cors({
-    origin: "*", // Allow all origins (For testing, you can restrict later)
+    origin: "https://brewnest.vercel.app", // Allow all origins (For testing, you can restrict later)
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type"],
   })
