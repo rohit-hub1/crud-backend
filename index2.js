@@ -6,7 +6,14 @@ dotenv.config();
 
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", // Allow all origins (For testing, you can restrict later)
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+
 app.use(express.json()); // Enables JSON parsing
 
 const port = 3000;
