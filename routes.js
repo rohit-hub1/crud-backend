@@ -1,24 +1,36 @@
 import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import User from "../models/User.js";
+import Tea from "./tea.js"; // Adjust path if needed
 
+dotenv.config();
 const router = express.Router();
 
-// Signup Route
+// ✅ Middleware: Verify JWT and Attach User ID
+const authenticateUser = (req, res, next) => {
+  const token = req.header("Authorization");
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Attach user info
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// ✅ **Signup Route**
 router.post("/signup", async (req, res) => {
   try {
     const { phone, password } = req.body;
 
-    // Check if user already exists
     let user = await User.findOne({ phone });
     if (user) return res.status(400).json({ message: "User already exists" });
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Save user
+    const hashedPassword = await bcrypt.hash(password, 10);
     user = new User({ phone, password: hashedPassword });
     await user.save();
 
@@ -28,21 +40,18 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// Login Route
+// ✅ **Login Route**
 router.post("/login", async (req, res) => {
   try {
     const { phone, password } = req.body;
 
-    // Find user
     const user = await User.findOne({ phone });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    // Generate JWT
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
@@ -50,6 +59,47 @@ router.post("/login", async (req, res) => {
     res.status(200).json({ token, message: "Login successful" });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ✅ **Create Tea (Only Logged-in User)**
+router.post("/teas", authenticateUser, async (req, res) => {
+  try {
+    const { name, price } = req.body;
+    const userId = req.user.userId; // Get user ID from token
+
+    const newTea = new Tea({ name, price, userId });
+    await newTea.save();
+
+    res.status(201).json(newTea);
+  } catch (error) {
+    res.status(500).json({ message: "Error creating tea" });
+  }
+});
+
+// ✅ **Get Teas (Only Show User's Own Teas)**
+router.get("/teas", authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const teas = await Tea.find({ userId });
+    res.json(teas);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching teas" });
+  }
+});
+
+// ✅ **Delete Tea (Only Owner Can Delete)**
+router.delete("/teas/:id", authenticateUser, async (req, res) => {
+  try {
+    const teaId = req.params.id;
+    const userId = req.user.userId;
+
+    const tea = await Tea.findOneAndDelete({ _id: teaId, userId });
+    if (!tea) return res.status(404).json({ message: "Tea not found" });
+
+    res.json({ message: "Tea deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting tea" });
   }
 });
 
