@@ -4,6 +4,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import User from "./user.js"; // Import User model
+import Tea from "./tea.js"; // Import Tea model
 
 dotenv.config();
 
@@ -37,13 +39,22 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected Successfully"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ✅ User Schema & Model
-const userSchema = new mongoose.Schema({
-  phone: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-});
+// ✅ Middleware: Verify JWT & Attach User ID
+const authenticateUser = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
-const User = mongoose.model("User", userSchema);
+  const token = authHeader.split(" ")[1]; // Extract token
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId; // Attach userId to request
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
 
 // ✅ Signup Route
 app.post("/auth/signup", async (req, res) => {
@@ -91,45 +102,42 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
-// ✅ Tea Schema & Model
-const teaSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
-});
-
-const Tea = mongoose.model("Tea", teaSchema);
-
 // ✅ Home Route
 app.get("/", (req, res) => {
   res.send("Hello Express");
 });
 
-// ✅ Create a new Tea
-app.post("/teas", async (req, res) => {
+// ✅ Create a new Tea (User-Specific)
+app.post("/teas", authenticateUser, async (req, res) => {
   try {
     const { name, price } = req.body;
-    const newTea = new Tea({ name, price });
+    const userId = req.userId; // Get user ID from token
+
+    const newTea = new Tea({ name, price, userId }); // Include userId
     await newTea.save();
+
     res.status(201).json(newTea);
   } catch (err) {
     res.status(500).json({ error: "Error saving tea" });
   }
 });
 
-// ✅ Get all Teas
-app.get("/teas", async (req, res) => {
+// ✅ Get all Teas (Only User's Own Teas)
+app.get("/teas", authenticateUser, async (req, res) => {
   try {
-    const teas = await Tea.find();
+    const userId = req.userId; // Get user ID from token
+    const teas = await Tea.find({ userId }); // Filter by userId
     res.status(200).json(teas);
   } catch (err) {
     res.status(500).json({ error: "Error fetching teas" });
   }
 });
 
-// ✅ Get a Tea by ID
-app.get("/teas/:id", async (req, res) => {
+// ✅ Get a Tea by ID (Only User's Own Tea)
+app.get("/teas/:id", authenticateUser, async (req, res) => {
   try {
-    const tea = await Tea.findById(req.params.id);
+    const userId = req.userId; // Get user ID from token
+    const tea = await Tea.findOne({ _id: req.params.id, userId }); // Filter by userId
     if (!tea) return res.status(404).json({ message: "Tea not found" });
     res.status(200).json(tea);
   } catch (err) {
@@ -137,15 +145,18 @@ app.get("/teas/:id", async (req, res) => {
   }
 });
 
-// ✅ Update a Tea by ID
-app.put("/teas/:id", async (req, res) => {
+// ✅ Update a Tea by ID (Only User's Own Tea)
+app.put("/teas/:id", authenticateUser, async (req, res) => {
   try {
     const { name, price } = req.body;
-    const tea = await Tea.findByIdAndUpdate(
-      req.params.id,
+    const userId = req.userId; // Get user ID from token
+
+    const tea = await Tea.findOneAndUpdate(
+      { _id: req.params.id, userId }, // Filter by userId
       { name, price },
       { new: true }
     );
+
     if (!tea) return res.status(404).json({ message: "Tea not found" });
     res.status(200).json(tea);
   } catch (err) {
@@ -153,11 +164,14 @@ app.put("/teas/:id", async (req, res) => {
   }
 });
 
-// ✅ Delete a Tea by ID
-app.delete("/teas/:id", async (req, res) => {
+// ✅ Delete a Tea by ID (Only User's Own Tea)
+app.delete("/teas/:id", authenticateUser, async (req, res) => {
   try {
-    const tea = await Tea.findByIdAndDelete(req.params.id);
+    const userId = req.userId; // Get user ID from token
+
+    const tea = await Tea.findOneAndDelete({ _id: req.params.id, userId }); // Filter by userId
     if (!tea) return res.status(404).json({ message: "Tea not found" });
+
     res
       .status(200)
       .json({ message: "Tea deleted successfully", deletedTea: tea });

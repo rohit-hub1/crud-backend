@@ -2,8 +2,8 @@ import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import User from "./User.js";
-import Tea from "./tea.js"; // Ensure this path is correct
+import User from "./user.js"; // Import User model
+import Tea from "./tea.js"; // Import Tea model
 
 dotenv.config();
 const router = express.Router();
@@ -25,7 +25,7 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// ✅ **Signup Route**
+// ✅ Signup Route
 router.post("/signup", async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -43,7 +43,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// ✅ **Login Route**
+// ✅ Login Route
 router.post("/login", async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -65,13 +65,13 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ **Create Tea (User-Specific)**
+// ✅ Create Tea (User-Specific)
 router.post("/teas", authenticateUser, async (req, res) => {
   try {
     const { name, price } = req.body;
     const userId = req.userId; // Get user ID from token
 
-    const newTea = new Tea({ name, price, userId });
+    const newTea = new Tea({ name, price, userId }); // Include userId
     await newTea.save();
 
     res.status(201).json(newTea);
@@ -80,24 +80,24 @@ router.post("/teas", authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ **Get Teas (Only User's Own Teas)**
+// ✅ Get Teas (Only User's Own Teas)
 router.get("/teas", authenticateUser, async (req, res) => {
   try {
-    const userId = req.userId;
-    const teas = await Tea.find({ userId });
+    const userId = req.userId; // Get user ID from token
+    const teas = await Tea.find({ userId }); // Filter by userId
     res.json(teas);
   } catch (error) {
     res.status(500).json({ message: "Error fetching teas" });
   }
 });
 
-// ✅ **Delete Tea (Only Owner Can Delete)**
+// ✅ Delete Tea (Only Owner Can Delete)
 router.delete("/teas/:id", authenticateUser, async (req, res) => {
   try {
     const teaId = req.params.id;
-    const userId = req.userId;
+    const userId = req.userId; // Get user ID from token
 
-    const tea = await Tea.findOneAndDelete({ _id: teaId, userId });
+    const tea = await Tea.findOneAndDelete({ _id: teaId, userId }); // Filter by userId
     if (!tea) return res.status(404).json({ message: "Tea not found" });
 
     res.json({ message: "Tea deleted successfully" });
@@ -105,16 +105,5 @@ router.delete("/teas/:id", authenticateUser, async (req, res) => {
     res.status(500).json({ message: "Error deleting tea" });
   }
 });
-
-router.get("/teas", authenticateUser, async (req, res) => {
-  try {
-    console.log("User ID from token:", req.user.userId); // Debugging line
-    const teas = await Tea.find({ userId: req.user.userId });
-    res.json(teas);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching teas" });
-  }
-});
-
 
 export default router;
