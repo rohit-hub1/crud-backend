@@ -80,25 +80,32 @@ app.post("/auth/login", async (req, res) => {
   try {
     const { phone, password } = req.body;
 
-    // Check if user exists
+    console.log("Login attempt for:", phone);
+
     const user = await User.findOne({ phone });
-    if (!user) return res.status(400).send({ message: "User not found" });
+    if (!user) {
+      console.log("❌ User not found");
+      return res.status(400).send({ message: "User not found" });
+    }
 
-    // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    if (!isMatch) {
+      console.log("❌ Invalid password");
       return res.status(401).send({ message: "Invalid credentials" });
+    }
 
-    // Generate JWT Token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
+    console.log("✅ Login successful");
     res.status(200).send({ token, message: "Login successful" });
   } catch (err) {
+    console.error("❌ Error logging in:", err);
     res.status(500).send({ error: "Error logging in" });
   }
 });
+
 
 /* ─────────────────────────────────────
   🟢 TEA CRUD OPERATIONS
