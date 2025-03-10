@@ -3,19 +3,22 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import User from "./User.js";
-import Tea from "./tea.js"; // Adjust path if needed
+import Tea from "./tea.js"; // Ensure this path is correct
 
 dotenv.config();
 const router = express.Router();
 
-// ✅ Middleware: Verify JWT and Attach User ID
+// ✅ Middleware: Verify JWT & Attach User ID
 const authenticateUser = (req, res, next) => {
-  const token = req.header("Authorization");
-  if (!token) return res.status(401).json({ message: "Unauthorized" });
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
+  const token = authHeader.split(" ")[1]; // Extract token
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach user info
+    req.userId = decoded.userId; // Attach userId to request
     next();
   } catch (err) {
     res.status(401).json({ message: "Invalid token" });
@@ -62,11 +65,11 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ **Create Tea (Only Logged-in User)**
+// ✅ **Create Tea (User-Specific)**
 router.post("/teas", authenticateUser, async (req, res) => {
   try {
     const { name, price } = req.body;
-    const userId = req.user.userId; // Get user ID from token
+    const userId = req.userId; // Get user ID from token
 
     const newTea = new Tea({ name, price, userId });
     await newTea.save();
@@ -77,10 +80,10 @@ router.post("/teas", authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ **Get Teas (Only Show User's Own Teas)**
+// ✅ **Get Teas (Only User's Own Teas)**
 router.get("/teas", authenticateUser, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.userId;
     const teas = await Tea.find({ userId });
     res.json(teas);
   } catch (error) {
@@ -92,7 +95,7 @@ router.get("/teas", authenticateUser, async (req, res) => {
 router.delete("/teas/:id", authenticateUser, async (req, res) => {
   try {
     const teaId = req.params.id;
-    const userId = req.user.userId;
+    const userId = req.userId;
 
     const tea = await Tea.findOneAndDelete({ _id: teaId, userId });
     if (!tea) return res.status(404).json({ message: "Tea not found" });
