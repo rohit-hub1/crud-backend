@@ -106,4 +106,15 @@ router.delete("/teas/:id", authenticateUser, async (req, res) => {
   }
 });
 
+router.get("/teas", authenticateUser, async (req, res) => {
+  try {
+    console.log("User ID from token:", req.user.userId); // Debugging line
+    const teas = await Tea.find({ userId: req.user.userId });
+    res.json(teas);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching teas" });
+  }
+});
+
+
 export default router;
