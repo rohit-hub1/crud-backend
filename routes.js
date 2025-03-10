@@ -2,7 +2,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import User from "../models/User.js";
+import User from "./User.js";
 import Tea from "./tea.js"; // Adjust path if needed
 
 dotenv.config();
