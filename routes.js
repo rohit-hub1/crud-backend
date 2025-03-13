@@ -25,7 +25,7 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// ✅ Signup Route
+// ✅ **Signup Route (Now Generates a 5-Digit User ID)**
 router.post("/signup", async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -34,7 +34,8 @@ router.post("/signup", async (req, res) => {
     if (user) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    user = new User({ phone, password: hashedPassword });
+    const userId = Math.floor(10000 + Math.random() * 90000); // Generate 5-digit User ID
+    user = new User({ phone, password: hashedPassword, userId });
     await user.save();
 
     res.status(201).json({ message: "User registered successfully" });
@@ -43,7 +44,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// ✅ Login Route
+// ✅ **Login Route (Includes User ID in Token)**
 router.post("/login", async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -55,9 +56,11 @@ router.post("/login", async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(
+      { userId: user.userId, _id: user._id }, // Include both IDs
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
     res.status(200).json({ token, message: "Login successful" });
   } catch (err) {
@@ -65,7 +68,19 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Create Tea (User-Specific)
+// ✅ **Get User Info (Returns the 5-Digit User ID)**
+router.get("/user-info", authenticateUser, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("userId");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ userId: user.userId });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching user info" });
+  }
+});
+
+// ✅ **Create Tea (User-Specific)**
 router.post("/teas", authenticateUser, async (req, res) => {
   try {
     const { name, price } = req.body;
@@ -80,7 +95,7 @@ router.post("/teas", authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ Get Teas (Only User's Own Teas)
+// ✅ **Get Teas (Only User's Own Teas)**
 router.get("/teas", authenticateUser, async (req, res) => {
   try {
     const userId = req.userId; // Get user ID from token
@@ -91,7 +106,7 @@ router.get("/teas", authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ Delete Tea (Only Owner Can Delete)
+// ✅ **Delete Tea (Only Owner Can Delete)**
 router.delete("/teas/:id", authenticateUser, async (req, res) => {
   try {
     const teaId = req.params.id;
